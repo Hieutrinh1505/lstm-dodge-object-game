@@ -1,0 +1,23 @@
+# Environments
+.env
+*.venv*
+venv/
+ENV/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Models (too large for Git)
+models/
+*.pth
+*.pt
+*.onnx
