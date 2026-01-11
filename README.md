@@ -73,7 +73,7 @@ The game uses a non-blocking architecture to achieve real-time voice control:
 **Thread 2: Voice Prediction**
 - Processes buffered audio when full 1-second window is available
 - Runs LSTM inference on MFCC features
-- Returns top 3 predictions (not just top 1!)
+- Applies confidence threshold (60%) to filter predictions
 - Updates game state through thread-safe locks
 
 **Why this works**: Separates fast I/O (audio streaming) from slow computation (LSTM inference), preventing game loop blocking.
@@ -82,19 +82,21 @@ The game uses a non-blocking architecture to achieve real-time voice control:
 
 ### 3. Game Design Patterns
 
-#### **Top-3 Prediction Strategy**
-Instead of requiring the model to be 100% confident, the game accepts commands if they appear in the top 3 predictions:
+#### **Confidence-Based Prediction**
+The game uses a confidence threshold approach to filter predictions:
 
 ```python
-# Check if "left" or "right" is in top 3 predictions
-for i, cmd in enumerate(top3_commands):
-    cmd_lower = cmd.lower()
-    if cmd_lower in ["left", "right"]:
-        detected_command = cmd_lower
-        break
+# Predict command with confidence score
+command, confidence = predict(audio_data, ModelConfig.sample_rate)
+
+# Only accept predictions above 60% confidence
+if confidence > 0.6:
+    last_command = command.lower()
+else:
+    last_command = None  # Ignore low-confidence predictions
 ```
 
-**Why?** Words like "right" might be harder to predict (similar to "write", "night", etc.), but if it's in the top 3, that's good enough for game control.
+**Why?** This ensures the game only responds to clear, confident voice commands and ignores background noise or unclear speech. The 60% threshold balances responsiveness with accuracy.
 
 #### **Command Cooldown Mechanism**
 - Cooldown: 200ms between command applications
@@ -277,8 +279,8 @@ python main.py
 
 ### 10. Common Challenges & Solutions
 
-#### **Challenge 1: "Right" is hard to predict**
-**Solution**: Use top-3 predictions instead of top-1. If "right" is anywhere in top 3, accept it.
+#### **Challenge 1: False predictions from background noise**
+**Solution**: Use confidence threshold (60%). Only accept predictions with high confidence scores to filter out noise and unclear speech.
 
 #### **Challenge 2: Character moves too much**
 **Solution**: Add command cooldown (200ms). Only apply commands if sufficient time has passed.
